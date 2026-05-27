@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart RAG Assistant</title>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --panel-bg: #1e293b;
+            --text-color: #f8fafc;
+            --accent-color: #6366f1;
+            --accent-hover: #4f46e5;
+            --border-color: #334155;
+            --bot-bubble: #334155;
+            --user-bubble: #6366f1;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            height: 100vh;
+        }
+
+        .sidebar {
+            width: 320px;
+            background-color: var(--panel-bg);
+            border-right: 1px solid var(--border-color);
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        .header h1 {
+            font-size: 1.5rem;
+            margin: 0 0 8px 0;
+            background: linear-gradient(to right, #818cf8, #c084fc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .header p {
+            margin: 0;
+            font-size: 0.875rem;
+            color: #94a3b8;
+        }
+
+        .card {
+            background-color: rgba(15, 23, 42, 0.5);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 16px;
+        }
+
+        label {
+            display: block;
+            font-size: 0.875rem;
+            font-weight: 500;
+            margin-bottom: 8px;
+            color: #cbd5e1;
+        }
+
+        input[type="text"], input[type="file"] {
+            width: 100%;
+            padding: 10px;
+            background-color: var(--bg-color);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: white;
+            box-sizing: border-box;
+            font-size: 0.875rem;
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: var(--accent-color);
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            background-color: var(--accent-color);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+            margin-top: 12px;
+        }
+
+        button:hover {
+            background-color: var(--accent-hover);
+        }
+
+        button:disabled {
+            background-color: #475569;
+            cursor: not-allowed;
+        }
+
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        .chat-container {
+            flex: 1;
+            padding: 32px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        .message {
+            display: flex;
+            max-width: 80%;
+        }
+
+        .message.user {
+            align-self: flex-end;
+        }
+
+        .message.bot {
+            align-self: flex-start;
+        }
+
+        .bubble {
+            padding: 16px 20px;
+            border-radius: 16px;
+            font-size: 0.95rem;
+            line-height: 1.5;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        .message.user .bubble {
+            background-color: var(--user-bubble);
+            border-bottom-right-radius: 4px;
+        }
+
+        .message.bot .bubble {
+            background-color: var(--bot-bubble);
+            border-bottom-left-radius: 4px;
+            color: #f1f5f9;
+        }
+
+        .input-area {
+            padding: 24px 32px;
+            background-color: var(--bg-color);
+            border-top: 1px solid var(--border-color);
+        }
+
+        .chat-form {
+            display: flex;
+            gap: 12px;
+            max-width: 800px;
+            margin: 0 auto;
+            position: relative;
+        }
+
+        .chat-form input {
+            flex: 1;
+            padding: 16px 20px;
+            padding-right: 100px;
+            border-radius: 24px;
+            background-color: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            color: white;
+            font-size: 1rem;
+        }
+
+        .chat-form input:focus {
+            outline: none;
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+        }
+
+        .chat-form button {
+            position: absolute;
+            right: 8px;
+            top: 8px;
+            bottom: 8px;
+            width: auto;
+            margin: 0;
+            padding: 0 24px;
+            border-radius: 16px;
+        }
+
+        #status {
+            font-size: 0.8rem;
+            margin-top: 8px;
+            color: #10b981;
+            display: none;
+        }
+
+        .loader {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .thinking {
+            opacity: 0.7;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="sidebar">
+        <div class="header">
+            <h1>Smart RAG Assistant</h1>
+            <p>End-to-End Document Intelligence</p>
+        </div>
+
+        <div class="card">
+            <label for="userId">User Identity</label>
+            <input type="text" id="userId" value="user_123" placeholder="Enter User ID">
+        </div>
+
+        <div class="card">
+            <label>Upload Knowledge (PDF)</label>
+            <input type="file" id="fileInput" accept=".pdf">
+            <button id="uploadBtn" onclick="uploadFile()">Process Document</button>
+            <div id="status"></div>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <div class="chat-container" id="chatContainer">
+            <div class="message bot">
+                <div class="bubble">
+                    Hello! I am your RAG AI. Upload a PDF document on the left, and then ask me questions about it here.
+                </div>
+            </div>
+        </div>
+
+        <div class="input-area">
+            <form class="chat-form" onsubmit="sendMessage(event)">
+                <input type="text" id="chatInput" placeholder="Ask a question about your documents..." autocomplete="off">
+                <button type="submit" id="sendBtn">Send</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = "http://localhost:8000";
+
+        async function uploadFile() {
+            const fileInput = document.getElementById('fileInput');
+            const userId = document.getElementById('userId').value;
+            const statusDiv = document.getElementById('status');
+            const uploadBtn = document.getElementById('uploadBtn');
+
+            if (!fileInput.files[0]) {
+                alert("Please select a PDF file first.");
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append("file", fileInput.files[0]);
+            formData.append("user_id", userId);
+
+            uploadBtn.innerHTML = '<span class="loader"></span> Uploading...';
+            uploadBtn.disabled = true;
+            statusDiv.style.display = 'none';
+
+            try {
+                const response = await fetch(`${API_BASE}/upload`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    statusDiv.style.color = '#10b981';
+                    statusDiv.innerText = `Success! ${data.chunks_processed} chunks indexed.`;
+                } else {
+                    const error = await response.json();
+                    statusDiv.style.color = '#ef4444';
+                    statusDiv.innerText = `Error: ${error.detail}`;
+                }
+            } catch (err) {
+                statusDiv.style.color = '#ef4444';
+                statusDiv.innerText = `Connection Error`;
+            } finally {
+                statusDiv.style.display = 'block';
+                uploadBtn.innerHTML = 'Process Document';
+                uploadBtn.disabled = false;
+            }
+        }
+
+        async function sendMessage(event) {
+            event.preventDefault();
+            
+            const input = document.getElementById('chatInput');
+            const message = input.value.trim();
+            const userId = document.getElementById('userId').value;
+            const sendBtn = document.getElementById('sendBtn');
+            const chatContainer = document.getElementById('chatContainer');
+
+            if (!message) return;
+
+            // Add user message
+            appendMessage(message, 'user');
+            input.value = '';
+            
+            // Add bot placeholder
+            const botBubble = appendMessage('<span class="thinking">Retrieving context & generating answer...</span>', 'bot');
+            
+            sendBtn.disabled = true;
+
+            try {
+                const response = await fetch(`${API_BASE}/chat`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        user_id: userId,
+                        message: message
+                    })
+                });
+
+                if (!response.ok) {
+                    botBubble.innerHTML = "Sorry, an error occurred during generation.";
+                    return;
+                }
+
+                botBubble.innerHTML = ""; // Clear thinking text
+                
+                // Handle the stream
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder('utf-8');
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    
+                    const chunk = decoder.decode(value, { stream: true });
+                    // Append chunk to UI directly
+                    botBubble.innerHTML += chunk.replace(/\n/g, '<br>');
+                    chatContainer.scrollTop = chatContainer.scrollHeight;
+                }
+
+            } catch (err) {
+                botBubble.innerHTML = "Connection failed.";
+            } finally {
+                sendBtn.disabled = false;
+                input.focus();
+            }
+        }
+
+        function appendMessage(text, sender) {
+            const container = document.getElementById('chatContainer');
+            
+            const msgDiv = document.createElement('div');
+            msgDiv.className = `message ${sender}`;
+            
+            const bubbleDiv = document.createElement('div');
+            bubbleDiv.className = 'bubble';
+            bubbleDiv.innerHTML = text; // Allow HTML for thinking span and breaks
+            
+            msgDiv.appendChild(bubbleDiv);
+            container.appendChild(msgDiv);
+            
+            container.scrollTop = container.scrollHeight;
+            return bubbleDiv; // Return bubble so we can update it in streaming
+        }
+    </script>
+</body>
+</html>
