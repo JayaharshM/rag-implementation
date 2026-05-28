@@ -55,6 +55,14 @@ By default, the backend falls back to the following configurations:
 - `file`: The PDF document.
 - `user_id`: A string representing the owner of the document.
 **Process**: Saves the file -> Extracts text -> Runs the Chunker -> Calls remote embeddings -> Inserts to ChromaDB mapped to `user_id`.
+**Example**:
+```bash
+curl -X POST "http://localhost:8000/upload" \
+  -H "accept: application/json" \
+  -H "Content-Type: multipart/form-data" \
+  -F "file=@/path/to/your/document.pdf;type=application/pdf" \
+  -F "user_id=user_123"
+```
 
 ### 2. `POST /query`
 **Purpose**: For testing retrieval logic without LLM generation.
@@ -62,6 +70,12 @@ By default, the backend falls back to the following configurations:
 - `user_id`: The ID of the document owner.
 - `message`: The search query.
 **Process**: Embeds the message -> Queries ChromaDB using `where={"user_id": ...}` -> Returns top 5 relevant text chunks.
+**Example**:
+```bash
+curl -X POST "http://localhost:8000/query" \
+  -H "Content-Type: application/json" \
+  -d '{"user_id": "user_123", "message": "What is the secret password?"}'
+```
 
 ### 3. `POST /chat`
 **Purpose**: The main Chat completion endpoint for the frontend UI.
@@ -69,6 +83,12 @@ By default, the backend falls back to the following configurations:
 - `user_id`: The ID of the document owner.
 - `message`: The prompt to ask the AI.
 **Process**: Performs the same retrieval as `/query`, bundles the chunks into an augmented prompt, passes it to Ollama LLM via `POST /api/generate`, and yields a `text/event-stream` stream to the frontend.
+**Example**:
+```bash
+curl -N -X POST "http://localhost:8000/chat" \
+  -H "Content-Type: application/json" \
+  -d '{"user_id": "user_123", "message": "What is the secret password?"}'
+```
 
 ---
 
